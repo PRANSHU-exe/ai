@@ -1,0 +1,478 @@
+#_5 pima and uci
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression, LogisticRegression
+from sklearn.metrics import accuracy_score, mean_squared_error, r2_score, confusion_matrix
+#pima import
+url="https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv"
+
+columns=["pregnancies",
+    "glucose",
+    "blood pressure",
+    "skin thickness",
+    "insulin",
+    "bmi",
+    "diabetesPedigreeFunction",
+    "age",
+    "Outcome"]
+df_pima=pd.read_csv(url)
+df_pima=pd.read_csv(url,names=columns)
+df_pima = df_pima.dropna() # Added to handle potential NaN values
+df_pima.head()
+#Uci import
+from sklearn.datasets import load_diabetes
+diabetes=load_diabetes()
+df_uci=pd.DataFrame(diabetes.data,columns=diabetes.feature_names)
+df_uci['target']=diabetes.target
+df_uci.head()
+###univriate anaiysis
+df_pima.describe()
+df_pima.mean()
+df_pima.median()
+df_pima.mode()
+df_pima.var()
+df_pima.std()
+df_pima.kurtosis()
+df_pima.skew()
+for col in df_pima.columns[:-1]:
+  sns.histplot(df_pima[col], kde=True)
+  plt.title(f'Pima: {col}')
+  plt.show()
+####bivarite analysis
+plt.figure(figsize=(10,6))
+sns.heatmap(df_pima.corr(),annot=True,cmap="coolwarm")
+plt.title("Correlation")
+plt.show()
+# Loop through all columns except 'Outcome'
+for col in df_pima.columns[:-1]:
+  plt.figure(figsize=(6, 4))
+  sns.boxplot(x='Outcome', y=col, data=df_pima)
+  plt.title(f'{col} vs Outcome (Pima)')
+  plt.show()
+
+#Liner regression
+X = df_pima[['glucose']]
+y = df_pima['Outcome']
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+lin_model = LinearRegression()
+lin_model.fit(X_train, y_train)
+y_pred = lin_model.predict(X_test)
+print("Coefficient:", lin_model.coef_[0])
+print("Intercept:", lin_model.intercept_)
+print("R² score:", r2_score(y_test, y_pred))
+plt.scatter(X, y, alpha=0.5)
+plt.plot(X, lin_model.predict(X), color='red')
+plt.xlabel("Glucose")
+plt.ylabel("Outcome")
+plt.title("Linear Regression: Glucose vs Outcome")
+plt.show()
+
+#Logistic Regression
+log_model = LogisticRegression()
+log_model.fit(X_train, y_train)
+y_pred = log_model.predict(X_test)
+print("Coefficient:", log_model.coef_[0][0])
+print("Accuracy:", accuracy_score(y_test, y_pred))
+X_range = np.linspace(X.min(), X.max(), 100).reshape(-1, 1)
+y_prob = log_model.predict_proba(X_range)[:, 1]
+plt.scatter(X, y, alpha=0.4)
+plt.plot(X_range, y_prob, color='red')
+plt.xlabel("Glucose")
+plt.ylabel("Probability of Diabetes")
+plt.title("Logistic Regression: Glucose vs Outcome")
+plt.show()
+
+
+####Multiple Regression 
+features = ['glucose', 'bmi', 'age', 'pregnancies']
+X = df_pima[features]
+y = df_pima['Outcome']
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+#liner regression
+multi_lin_model = LinearRegression()
+multi_lin_model.fit(X_train, y_train)
+y_pred = multi_lin_model.predict(X_test)
+coefficients = pd.DataFrame(multi_lin_model.coef_, index=features, columns=['Coefficient'])
+print(coefficients)
+print("R² score:", r2_score(y_test, y_pred))
+coefficients.plot(kind='bar')
+plt.title("Multiple Linear Regression Coefficients")
+plt.ylabel("Coefficient Value Or features importance")
+plt.show()
+#logistic regression
+multi_log_model = LogisticRegression(max_iter=1000)
+multi_log_model.fit(X_train, y_train)
+
+y_pred = multi_log_model.predict(X_test)
+
+coefficients = pd.DataFrame(multi_log_model.coef_[0], index=features, columns=['Coefficient'])
+print(coefficients)
+print("Accuracy:", accuracy_score(y_test, y_pred))
+coefficients.plot(kind='bar', color='orange')
+plt.title("Multiple Logistic Regression Coefficients")
+plt.ylabel("Coefficient Value")
+plt.show()
+
+##Uci dataset
+#bivariate
+df_uci['target_bin'] = pd.qcut(df_uci['target'], q=3, labels=['Low', 'Medium', 'High'])
+for col in df_uci.columns[:-2]:  # exclude 'target' and 'target_bin'
+  plt.figure(figsize=(6, 4))
+  sns.boxplot(x='target_bin', y=col, data=df_uci)
+  plt.title(f'{col} vs Target Bin (UCI)')
+  plt.show()
+#liner 
+X_bmi = df_uci[['bmi']]
+y = df_uci['target']
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X_bmi, y, test_size=0.2, random_state=42
+)
+model_lr = LinearRegression()
+model_lr.fit(X_train, y_train)
+y_pred = model_lr.predict(X_test)
+plt.figure(figsize=(6,4))
+plt.scatter(X_test, y_test, color="blue", label="Actual values")
+plt.plot(X_test, y_pred, color="red", label="Regression line")
+plt.xlabel("BMI")
+plt.ylabel("Target")
+plt.title("Linear Regression: BMI vs Target")
+plt.legend()
+plt.show()
+mse = mean_squared_error(y_test, y_pred)
+r2 = r2_score(y_test, y_pred)
+print("MSE:", mse)
+print("R² Score:", r2)
+#multiple regreggions
+model_multi = LinearRegression()
+model_multi.fit(X_train, y_train)
+y_pred_multi = model_multi.predict(X_test)
+mse_multi = mean_squared_error(y_test, y_pred_multi)
+r2_multi = r2_score(y_test, y_pred_multi)
+print("Multiple Regression MSE:", mse_multi)
+print("Multiple Regression R²:", r2_multi)
+plt.figure(figsize=(6,4))
+plt.scatter(y_test, y_pred_multi)
+plt.xlabel("Actual Target")
+plt.ylabel("Predicted Target")
+plt.title("Actual vs Predicted Values (Multiple Regression)")
+plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], color="red")
+plt.show()
+
+
+
+#__6 Uci graphs
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from scipy.stats import norm
+from mpl_toolkits.mplot3d import Axes3D
+from sklearn.datasets import load_diabetes
+diabetes=load_diabetes()
+df=pd.DataFrame(diabetes.data,columns=diabetes.feature_names)
+df['target']=diabetes.target
+df.head()
+df.shape
+df.info()
+df.describe()
+#normal curve
+data=df['bmi']
+mu,std=norm.fit(data)
+plt.hist(data,bins=20,density=True)
+xmin,xmax=plt.xlim()
+x=np.linspace(xmin,xmax,100)
+p=norm.pdf(x,mu,std)
+plt.plot(x,p)
+plt.title("Normal Curve")
+plt.show()
+#Density Plots
+sns.kdeplot(df['bp'],fill=True)
+plt.title("Density Plot")
+plt.show()
+#Contouer Plot
+sns.kdeplot(
+    x=df['bmi'],
+    y=df['bp'],
+    fill=True)
+plt.title("Contour Plot")
+plt.show()
+#Scatter plot
+plt.scatter(df['bmi'],df['target'])
+plt.title("Scatter Plot")
+plt.show()
+#Correraltion map
+plt.figure(figsize=(10,6))
+sns.heatmap(df.corr(),annot=True)
+plt.title("Correlation Map")
+plt.show()
+#histrogram
+plt.hist(df['age'],bins=15)
+plt.title("Histogram")
+plt.show()
+#multiple histogram
+df[['age','bmi','bp']].hist(bins=15,figsize=(10,6))
+plt.show()
+fig=plt.figure()
+ax=fig.add_subplot(111,projection='3d')
+ax.scatter(
+df['bmi'],
+df['bp'],
+df['target']
+)
+ax.set_xlabel('bmi')
+ax.set_ylabel('bp')
+ax.set_zlabel('target')
+plt.title("3D Scatter Plot")
+plt.show()
+
+
+
+#_7 Car price prediction
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import r2_score, mean_absolute_error
+
+# 1. Load dataset
+df = pd.read_csv("car_price_prediction_.csv")
+
+# 2. Basic Info
+print(df.head())
+print(df.info())
+
+# 3. Handle missing values
+print(df.isnull().sum())
+df.dropna(inplace=True)
+
+# 4. Encode ALL categorical columns (IMPORTANT FIX)
+le = LabelEncoder()
+for col in df.columns:
+    if df[col].dtype == 'object':
+        df[col] = le.fit_transform(df[col].astype(str))
+
+# 5. Drop unnecessary column (safe)
+df.drop(columns=['Car ID'], inplace=True, errors='ignore')
+
+# 6. EDA
+
+# Histogram
+if "Price" in df.columns:
+    plt.figure()
+    plt.hist(df["Price"], bins=20)
+    plt.title("Distribution of Car Prices")
+    plt.xlabel("Price")
+    plt.ylabel("Frequency")
+    plt.show()
+
+# Boxplots
+if "Price" in df.columns:
+    plt.figure()
+    sns.boxplot(y=df["Price"])
+    plt.title("Box Plot of Price")
+    plt.show()
+
+if "Mileage" in df.columns:
+    plt.figure()
+    sns.boxplot(y=df["Mileage"])
+    plt.title("Box Plot of Mileage")
+    plt.show()
+
+# Scatter plot
+if "Mileage" in df.columns and "Price" in df.columns:
+    plt.figure()
+    plt.scatter(df["Mileage"], df["Price"])
+    plt.title("Mileage vs Price")
+    plt.xlabel("Mileage")
+    plt.ylabel("Price")
+    plt.show()
+
+# Fuel Type vs Price
+if "Fuel Type" in df.columns and "Price" in df.columns:
+    plt.figure()
+    sns.boxplot(x=df["Fuel Type"], y=df["Price"])
+    plt.title("Fuel Type vs Price")
+    plt.show()
+
+# Correlation Heatmap
+plt.figure(figsize=(10, 8))
+sns.heatmap(df.corr(numeric_only=True), annot=True)
+plt.title("Correlation Matrix")
+plt.show()
+
+# 7. Model Building
+if "Price" in df.columns:
+    X = df.drop("Price", axis=1)
+    y = df["Price"]
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
+
+    model = LinearRegression()
+    model.fit(X_train, y_train)
+
+    # 8. Prediction
+    y_pred = model.predict(X_test)
+
+    # 9. Evaluation
+    print("R2 Score:", r2_score(y_test, y_pred))
+    print("MAE:", mean_absolute_error(y_test, y_pred))
+else:
+    print("Error: 'Price' column not found")
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+credit_record_df = pd.read_csv('credit_record.csv')
+credit_record_df.head(20)
+application_record_df = pd.read_csv('application_record.csv')
+application_record_df.head()
+print(f'Credit data have {credit_record_df.shape[0]} rows , {credit_record_df.shape[1]} columns.')
+print(f'Application data have {application_record_df.shape[0]} rows , {application_record_df.shape[1]} columns.')
+print('Credit data null values:')
+print(credit_record_df.isnull().sum())
+print('Application data null values:')
+print(application_record_df.isnull().sum())
+credit_record_df['STATUS'].unique()
+#Relationship between Columns
+sns.countplot(x='STATUS', data=credit_record_df)
+plt.show()
+plt.figure(figsize=(15, 6))
+sns.countplot(x='MONTHS_BALANCE', data=credit_record_df)
+plt.show()
+credit_record_df.MONTHS_BALANCE.nunique()
+credit_record_df.MONTHS_BALANCE.min()
+credit_record_df.info()
+credit_record_df['MONTHS_BALANCE'].groupby(credit_record_df['STATUS']).agg(pd.Series.mode)
+plt.figure(figsize=(10, 6))
+sns.histplot(credit_record_df['MONTHS_BALANCE'], bins=30, kde=True)
+plt.title('Distribution of MONTHS_BALANCE')
+plt.xlabel('Months Balance')
+plt.ylabel('Frequency')
+plt.show()
+figsize = (10, 6)
+plt.figure(figsize=figsize)
+sns.countplot(x='NAME_INCOME_TYPE', data=application_record_df)
+plt.show()
+credit_record_df['Good or Bad'] = ['Good' if x in set(['0','X','C']) else 'Bad' for x in credit_record_df['STATUS']]
+credit_record_df
+credit_goods_bads = credit_record_df.groupby(['ID','Good or Bad']).size().to_frame('size')
+credit_goods_bads.reset_index(inplace=True)
+credit_goods_bads
+idx = credit_goods_bads.groupby('ID')['size'].idxmax()
+max_goods_bads = credit_goods_bads.loc[idx]
+max_goods_bads
+max_goods_bads['Label'] = [1 if x == 'Good' else 0 for x in max_goods_bads['Good or Bad']]
+max_goods_bads
+max_goods_bads = max_goods_bads.drop(['Good or Bad', 'size'], axis=1)
+max_goods_bads = max_goods_bads.reset_index(drop=True)
+max_goods_bads
+#Time to join data
+application_record_df.fillna('Unknown', inplace=True)
+len(set(application_record_df['ID']).intersection(set(max_goods_bads['ID'])))
+data = pd.merge(application_record_df, max_goods_bads, how='inner', on='ID')
+data
+#Preprocessing
+X = data.drop('Label', axis=1)
+y = data['Label']
+X
+X.info()
+X_info = X.copy()
+
+# Label encoding for categoricals
+for colname in X_info.select_dtypes("object"):
+    X_info[colname], _ = X_info[colname].factorize()
+
+# Converting floats to ints
+for colname in X_info.select_dtypes("float"):
+    X_info[colname] = X_info[colname].astype(int)
+
+# Converting bools to ints
+#for colname in X_info.select_dtypes("bool"):
+#    X_info[colname] = X_info[colname].astype(int)
+
+# All discrete features should now have integer dtypes
+discrete_features = X_info.dtypes != int
+
+from sklearn.feature_selection import mutual_info_regression
+
+def make_mi_scores(X, y, discrete_features):
+    mi_scores = mutual_info_regression(X, y, discrete_features=discrete_features)
+    mi_scores = pd.Series(mi_scores, name="MI Scores", index=X.columns)
+    mi_scores = mi_scores.sort_values(ascending=False)
+    return mi_scores
+
+mi_scores = make_mi_scores(X_info, y, discrete_features)
+mi_scores
+def plot_mi_scores(scores):
+    scores = scores.sort_values(ascending=True)
+    width = np.arange(len(scores))
+    ticks = list(scores.index)
+    plt.barh(width, scores)
+    plt.yticks(width, ticks)
+    plt.title("Mutual Information Scores")
+
+
+plt.figure(dpi=100, figsize=(10, 15))
+plot_mi_scores(mi_scores)
+sns.relplot(x="AMT_INCOME_TOTAL", y="Label", data=data);
+sns.lmplot(x="DAYS_EMPLOYED", y="Label", hue="CNT_CHILDREN", data=data);
+#sns.lmplot(x="CODE_GENDER", y=y, hue="FLAG_OWN_REALTY", data=X_info);
+plt.figure(dpi=50, figsize=(35, 10))
+sns.scatterplot(x=data['OCCUPATION_TYPE'], y=data['Label'], hue=data['CODE_GENDER'])
+#Convert Categorical Data To numerical
+X = pd.get_dummies(X, drop_first=True)
+X
+#Scalling the data
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+from sklearn.preprocessing import StandardScaler
+
+
+scaler = StandardScaler()
+
+X_train_scaled= scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+print("Normalized input data(X):\n", X_train_scaled)
+#modelling
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, confusion_matrix, ConfusionMatrixDisplay
+from sklearn.ensemble import RandomForestClassifier
+from xgboost import XGBClassifier
+import matplotlib.pyplot as plt
+rf_model = RandomForestClassifier(n_estimators=100, random_state=42)
+
+rf_model.fit(X_train, y_train)
+
+rf_pred = rf_model.predict(X_test)
+rf_cm = confusion_matrix(y_test, rf_pred)
+
+print("Random Forest Confusion Matrix")
+print(rf_cm)
+
+ConfusionMatrixDisplay(confusion_matrix=rf_cm).plot()
+plt.title("Random Forest Confusion Matrix")
+plt.show()
+xgb_model = XGBClassifier(use_label_encoder=False, eval_metric='logloss')
+
+xgb_model.fit(X_train, y_train)
+
+xgb_pred = xgb_model.predict(X_test)
+xgb_cm = confusion_matrix(y_test, xgb_pred)
+
+print("XGBoost Confusion Matrix")
+print(xgb_cm)
+
+ConfusionMatrixDisplay(confusion_matrix=xgb_cm).plot()
+plt.title("XGBoost Confusion Matrix")
+plt.show()
